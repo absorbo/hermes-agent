@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from hermes_constants import get_hermes_home
 from hermes_cli.env_loader import load_hermes_dotenv
+from hermes_cli.fallback_config import get_fallback_chain
 from utils import is_truthy_value
 from tui_gateway.transport import (
     StdioTransport,
@@ -2045,6 +2046,7 @@ def _make_agent(sid: str, key: str, session_id: str | None = None):
         pass_session_id=is_truthy_value(os.environ.get("HERMES_TUI_PASS_SESSION_ID")),
         skip_context_files=is_truthy_value(os.environ.get("HERMES_IGNORE_RULES")),
         skip_memory=is_truthy_value(os.environ.get("HERMES_IGNORE_RULES")),
+        fallback_model=get_fallback_chain(cfg),
         **_agent_cbs(sid),
     )
 
