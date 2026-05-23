@@ -9,6 +9,7 @@ Usage:
   python google_api.py gmail search "is:unread" [--max 10]
   python google_api.py gmail get MESSAGE_ID
   python google_api.py gmail send --to user@example.com --subject "Hi" --body "Hello"
+  python google_api.py gmail draft --to user@example.com --subject "Re: X" --body "Draft text"
   python google_api.py gmail reply MESSAGE_ID --body "Thanks"
   python google_api.py calendar list [--from DATE] [--to DATE] [--calendar primary]
   python google_api.py calendar create --summary "Meeting" --start DATETIME --end DATETIME
@@ -45,6 +46,7 @@ CLIENT_SECRET_PATH = HERMES_HOME / "google_client_secret.json"
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.compose",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/drive",
@@ -352,6 +354,36 @@ def gmail_send(args):
     result = service.users().messages().send(userId="me", body=body).execute()
     print(json.dumps({"status": "sent", "id": result["id"], "threadId": result.get("threadId", "")}, indent=2))
 
+
+
+def gmail_draft(args):
+    """Create a Gmail draft. NEVER sends. DRAFT ONLY."""
+    if _gws_binary():
+        message = MIMEText(args.body, "html" if args.html else "plain")
+        message["to"] = args.to
+        message["subject"] = args.subject
+        if args.cc:
+            message["cc"] = args.cc
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+        result = _run_gws(
+            ["gmail", "users", "drafts", "create"],
+            params={"userId": "me"},
+            body={"message": {"raw": raw}},
+        )
+        print(json.dumps({"status": "drafted", "id": result["id"], "message": {"id": result.get("message", {}).get("id", "")}}, indent=2))
+        return
+
+    service = build_service("gmail", "v1")
+    message = MIMEText(args.body, "html" if args.html else "plain")
+    message["to"] = args.to
+    message["subject"] = args.subject
+    if args.cc:
+        message["cc"] = args.cc
+
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    draft_body = {"message": {"raw": raw}}
+    result = service.users().drafts().create(userId="me", body=draft_body).execute()
+    print(json.dumps({"status": "drafted", "id": result["id"], "message": {"id": result.get("message", {}).get("id", "")}}, indent=2))
 
 
 def gmail_reply(args):
@@ -721,7 +753,7 @@ def drive_share(args):
         "type": args.type,
         "role": args.role,
     }
-    if args.type in {"user", "group"}:
+    if args.type in ("user", "group"):
         if not args.email:
             print("ERROR: --email is required for type=user or type=group", file=sys.stderr)
             sys.exit(1)
@@ -1073,6 +1105,14 @@ def main():
     p.add_argument("--html", action="store_true", help="Send body as HTML")
     p.add_argument("--thread-id", default="", help="Thread ID for threading")
     p.set_defaults(func=gmail_send)
+
+    p = gmail_sub.add_parser("draft")
+    p.add_argument("--to", required=True)
+    p.add_argument("--subject", required=True)
+    p.add_argument("--body", required=True)
+    p.add_argument("--cc", default="")
+    p.add_argument("--html", action="store_true", help="Send body as HTML")
+    p.set_defaults(func=gmail_draft)
 
     p = gmail_sub.add_parser("reply")
     p.add_argument("message_id", help="Message ID to reply to")
