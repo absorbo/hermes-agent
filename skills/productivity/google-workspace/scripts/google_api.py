@@ -9,7 +9,7 @@ Usage:
   python google_api.py gmail search "is:unread" [--max 10]
   python google_api.py gmail get MESSAGE_ID
   python google_api.py gmail send --to user@example.com --subject "Hi" --body "Hello"
-  python google_api.py gmail draft --to user@example.com --subject "Re: X" --body "Draft text"
+  python google_api.py gmail create-draft --to user@example.com --subject "Re: X" --body "Draft text"
   python google_api.py gmail reply MESSAGE_ID --body "Thanks"
   python google_api.py calendar list [--from DATE] [--to DATE] [--calendar primary]
   python google_api.py calendar create --summary "Meeting" --start DATETIME --end DATETIME
@@ -1106,7 +1106,7 @@ def main():
     p.add_argument("--thread-id", default="", help="Thread ID for threading")
     p.set_defaults(func=gmail_send)
 
-    p = gmail_sub.add_parser("draft")
+    p = gmail_sub.add_parser("draft", aliases=["create-draft"])
     p.add_argument("--to", required=True)
     p.add_argument("--subject", required=True)
     p.add_argument("--body", required=True)
